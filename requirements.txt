@@ -1,0 +1,2 @@
+# Packages and exact versions will be defined after the baseline implementation is selected.
+# No executable dependencies at the project setup stage.
