@@ -1,2 +1,4 @@
-# Packages and exact versions will be defined after the baseline implementation is selected.
-# No executable dependencies at the project setup stage.
+numpy>=2.0,<3
+matplotlib>=3.6,<4
+reportlab>=4,<5
+python-pptx>=1.0,<2
