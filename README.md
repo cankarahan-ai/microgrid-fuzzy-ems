@@ -122,6 +122,3 @@ More robust evidence includes `measurement_noise.csv` and `parameter_ablation.cs
 5. Rodriguez et al. (2023), https://doi.org/10.1016/j.apenergy.2023.120771
 6. El Zerk & Ouassaid (2023), https://doi.org/10.3390/en16052244
 
-## Generative AI Usage Disclosure
-
-ChatGPT helped research/compare sources, draft and test code, run synthetic experiments, create plots, and draft the technical report and slides. The student should inspect code, re-run experiments, verify results, and be ready to explain them in the oral defense. This use is reported in the PDF under **Generative AI Usage Disclosure**.
