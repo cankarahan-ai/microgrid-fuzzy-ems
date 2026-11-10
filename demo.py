@@ -1,34 +1,30 @@
-"""Interactive or example command-line demo of the reconstructed FIS.
-
-Examples:
-    python demo.py --pv 15 --load 23 --soc 18
-    python demo.py --pv 23 --load 12 --soc 85
-    python demo.py
-"""
+"""Live demonstration: python demo.py --pv 15 --load 23 --soc 18"""
 import argparse
-from src.fuzzy_ems import MamdaniEMS
+from src.fuzzy_ems import MamdaniEMS, MODES
 
-def demo(pv,load,soc):
-    ems=MamdaniEMS()
-    normalized=max(-1,min(1,(load-pv)/ems.cfg.normalization_kw))
-    result=ems.infer(normalized,soc,details=True)
-    base=result['action'];safe=ems.safety_extension(base,soc)
-    print(f'PV: {pv:.2f} kW | Load: {load:.2f} kW | SOC: {soc:.1f}%')
-    print(f'Normalized balance: {normalized:+.3f}')
-    print('Power memberships:',', '.join(f'{k}={v:.3f}' for k,v in result['power_memberships'].items()))
-    print('SOC memberships:',', '.join(f'{k}={v:.3f}' for k,v in result['soc_memberships'].items()))
-    print('Active rules:')
-    for r in sorted(result['rules'],key=lambda x:-x['strength']):
-        if r['strength']>1e-6:print(f"  [{r['strength']:.3f}] IF {r['condition']} THEN {r['output']}")
-    print(f'Baseline action: {base:+.5f} | Proposed action: {safe:+.5f}')
-    print('Sign meaning: negative charge | positive discharge | zero hold')
 
-if __name__=='__main__':
-    parser=argparse.ArgumentParser(description='Fuzzy microgrid energy controller demo')
-    parser.add_argument('--pv',type=float,default=14.0,help='PV generation, kW')
-    parser.add_argument('--load',type=float,default=22.0,help='Load, kW')
-    parser.add_argument('--soc',type=float,default=19.0,help='Battery SOC, 0..100 percent')
-    args=parser.parse_args()
-    if args.pv<0 or args.load<0:parser.error('PV/load must be >=0')
-    if not 0<=args.soc<=100:parser.error('SOC must be within [0,100]')
-    demo(args.pv,args.load,args.soc)
+def run(pv, load, soc):
+    ems = MamdaniEMS()
+    balance = max(-1., min(1., (load-pv)/ems.cfg.normalization_kw))
+    details = ems.infer(balance, soc, details=True)
+    print(f'PV={pv:.2f} kW | Load={load:.2f} kW | SOC={soc:.1f}% | balance={balance:+.3f}')
+    print('Power memberships:', details['power_memberships'])
+    print('SOC memberships:', details['soc_memberships'])
+    for rule in sorted(details['rules'], key=lambda r: -r['strength']):
+        if rule['strength'] > .00001:
+            print(f"  IF {rule['condition']} THEN {rule['output']} (strength {rule['strength']:.3f})")
+    for mode in MODES:
+        value = ems.control(balance, soc, mode)
+        print(f'  {mode:12}  {value:+.5f}')
+    print('Sign convention: negative=charge; positive=discharge; zero=hold')
+
+
+if __name__ == '__main__':
+    p = argparse.ArgumentParser()
+    p.add_argument('--pv', type=float, default=15)
+    p.add_argument('--load', type=float, default=23)
+    p.add_argument('--soc', type=float, default=18)
+    a = p.parse_args()
+    if a.pv < 0 or a.load < 0 or not 0 <= a.soc <= 100:
+        p.error('Require nonnegative PV/load and SOC in [0,100]')
+    run(a.pv, a.load, a.soc)

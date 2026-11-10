@@ -1,0 +1,8 @@
+balance,soc,figure3_python_command,text_cutoff_command,proposed_command,paper_S6_prose_reported,figure3_vs_reported_abs_difference,note
+-1,0,-0.666668,0.0,-0.666668,0.00494,0.671608,Reported S6 numeric mismatch with Figure 3(d) reconstruction
+-1,100,0.0,0.0,0.0,-0.00494,0.00494,Reported S6 numeric mismatch with Figure 3(d) reconstruction
+0,50,0.0,0.0,0.0,,,Figure 3 consistency check
+1,0,0.0,0.0,0.0,,,Figure 3 consistency check
+1,100,0.666668,0.0,0.666668,,,Figure 3 consistency check
+-1,50,-0.666668,-0.666668,-0.666668,,,Figure 3 consistency check
+1,50,0.666668,0.666668,0.666668,,,Figure 3 consistency check

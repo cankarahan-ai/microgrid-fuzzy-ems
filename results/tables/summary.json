@@ -1,0 +1,229 @@
+{
+  "reference": "Nur-E-Alam et al. Scientific Reports 15:995 (2025), Figure 3 / Fig S6 prose",
+  "paper_numeric_mismatch": "Reconstructed Fig3 rule base does not match Fig S6 prose numerical snapshots; see paper_anchor_checks.csv",
+  "data": "Synthetic deterministic PV and load, NOT the Malaysian site data",
+  "plant_assumptions": {
+    "capacity_kwh": 50.0,
+    "power_limit_kw": 8.0,
+    "efficiency_charge": 0.95,
+    "efficiency_discharge": 0.95,
+    "dt_hours": 0.25
+  },
+  "controller_assumptions": {
+    "normalization_kw": 20.0,
+    "points": 1001,
+    "soc_min": 20.0,
+    "soc_max": 80.0,
+    "guard_width": 10.0
+  },
+  "random_seeds": [
+    2,
+    7,
+    14,
+    42,
+    101,
+    2026
+  ],
+  "initial_soc": [
+    10,
+    19,
+    25,
+    50,
+    75,
+    81,
+    90
+  ],
+  "modes": {
+    "fig3_fis": {
+      "scenarios": 42,
+      "unsafe_direction_steps_total": 983,
+      "outside_band_steps_total": 1555,
+      "mean_grid_import_kwh": 159.5707,
+      "mean_grid_export_kwh": 51.1436,
+      "mean_battery_throughput_kwh": 18.8077,
+      "mean_final_soc": 29.7125
+    },
+    "text_cutoff": {
+      "scenarios": 42,
+      "unsafe_direction_steps_total": 0,
+      "outside_band_steps_total": 2808,
+      "mean_grid_import_kwh": 167.6894,
+      "mean_grid_export_kwh": 54.4818,
+      "mean_battery_throughput_kwh": 7.3509,
+      "mean_final_soc": 40.4621
+    },
+    "proposed": {
+      "scenarios": 42,
+      "unsafe_direction_steps_total": 0,
+      "outside_band_steps_total": 856,
+      "mean_grid_import_kwh": 161.114,
+      "mean_grid_export_kwh": 51.5607,
+      "mean_battery_throughput_kwh": 16.8473,
+      "mean_final_soc": 32.1692
+    }
+  },
+  "noise_experiment": [
+    {
+      "normalized_balance": 1,
+      "true_soc": 20,
+      "mode": "fig3_fis",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": 0.076096,
+      "command_std": 0.011388,
+      "mean_abs_step_change": 0.012717,
+      "total_variation": 5.086716
+    },
+    {
+      "normalized_balance": 1,
+      "true_soc": 20,
+      "mode": "text_cutoff",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": 0.043352,
+      "command_std": 0.042744,
+      "mean_abs_step_change": 0.044349,
+      "total_variation": 17.739436
+    },
+    {
+      "normalized_balance": 1,
+      "true_soc": 20,
+      "mode": "proposed",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": 0.005457,
+      "command_std": 0.008735,
+      "mean_abs_step_change": 0.007939,
+      "total_variation": 3.175788
+    },
+    {
+      "normalized_balance": -1,
+      "true_soc": 80,
+      "mode": "fig3_fis",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": -0.076737,
+      "command_std": 0.011184,
+      "mean_abs_step_change": 0.012683,
+      "total_variation": 5.073224
+    },
+    {
+      "normalized_balance": -1,
+      "true_soc": 80,
+      "mode": "text_cutoff",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": -0.044455,
+      "command_std": 0.042908,
+      "mean_abs_step_change": 0.043756,
+      "total_variation": 17.502238
+    },
+    {
+      "normalized_balance": -1,
+      "true_soc": 80,
+      "mode": "proposed",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": -0.005821,
+      "command_std": 0.008356,
+      "mean_abs_step_change": 0.008052,
+      "total_variation": 3.22075
+    },
+    {
+      "normalized_balance": 1,
+      "true_soc": 22,
+      "mode": "fig3_fis",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": 0.09224,
+      "command_std": 0.013951,
+      "mean_abs_step_change": 0.01575,
+      "total_variation": 6.300151
+    },
+    {
+      "normalized_balance": 1,
+      "true_soc": 22,
+      "mode": "text_cutoff",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": 0.084608,
+      "command_std": 0.031801,
+      "mean_abs_step_change": 0.028156,
+      "total_variation": 11.26247
+    },
+    {
+      "normalized_balance": 1,
+      "true_soc": 22,
+      "mode": "proposed",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": 0.021487,
+      "command_std": 0.017607,
+      "mean_abs_step_change": 0.019492,
+      "total_variation": 7.796625
+    },
+    {
+      "normalized_balance": -1,
+      "true_soc": 78,
+      "mode": "fig3_fis",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": -0.091881,
+      "command_std": 0.012666,
+      "mean_abs_step_change": 0.01467,
+      "total_variation": 5.867907
+    },
+    {
+      "normalized_balance": -1,
+      "true_soc": 78,
+      "mode": "text_cutoff",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": -0.084835,
+      "command_std": 0.030103,
+      "mean_abs_step_change": 0.028078,
+      "total_variation": 11.231365
+    },
+    {
+      "normalized_balance": -1,
+      "true_soc": 78,
+      "mode": "proposed",
+      "samples": 401,
+      "noise_sigma_soc_points": 1.5,
+      "command_mean": -0.0206,
+      "command_std": 0.01599,
+      "mean_abs_step_change": 0.018026,
+      "total_variation": 7.210486
+    }
+  ],
+  "guard_width_ablation": [
+    {
+      "guard_width_soc_points": 5,
+      "unsafe_direction_steps_total": 0,
+      "outside_band_steps_total": 856,
+      "mean_grid_import_kwh": 160.837,
+      "mean_battery_throughput_kwh": 17.2739
+    },
+    {
+      "guard_width_soc_points": 10,
+      "unsafe_direction_steps_total": 0,
+      "outside_band_steps_total": 856,
+      "mean_grid_import_kwh": 161.114,
+      "mean_battery_throughput_kwh": 16.8473
+    },
+    {
+      "guard_width_soc_points": 15,
+      "unsafe_direction_steps_total": 0,
+      "outside_band_steps_total": 856,
+      "mean_grid_import_kwh": 161.3482,
+      "mean_battery_throughput_kwh": 16.4175
+    },
+    {
+      "guard_width_soc_points": 20,
+      "unsafe_direction_steps_total": 0,
+      "outside_band_steps_total": 856,
+      "mean_grid_import_kwh": 161.5491,
+      "mean_battery_throughput_kwh": 16.0106
+    }
+  ]
+}

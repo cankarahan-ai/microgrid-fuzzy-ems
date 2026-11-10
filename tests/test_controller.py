@@ -1,38 +1,83 @@
 import unittest
 import numpy as np
-from src.fuzzy_ems import MamdaniEMS,RULES,triangle
-from src.simulator import generate_day,simulate
+from src.fuzzy_ems import MamdaniEMS, RULES, Config, triangle
+from src.simulator import generate_day, simulate
 
-class TestEMS(unittest.TestCase):
-    def setUp(self):self.f=MamdaniEMS()
-    def test_nine_rules(self):self.assertEqual(len(RULES),9)
-    def test_input_memberships(self):
-        for v,term in [(-1,'surplus'),(0,'balanced'),(1,'deficit')]:
-            p,_=self.f.memberships(v,50);self.assertAlmostEqual(p[term],1)
-        for v,term in [(0,'low'),(50,'medium'),(100,'high')]:
-            _,s=self.f.memberships(0,v);self.assertAlmostEqual(s[term],1)
-    def test_directions(self):
-        self.assertLess(self.f.infer(-1,10),0)
-        self.assertGreater(self.f.infer(1,90),0)
-        self.assertAlmostEqual(self.f.infer(0,50),0,places=9)
-    def test_safety_filter(self):
-        self.assertEqual(self.f.safety_extension(.5,20),0)
-        self.assertEqual(self.f.safety_extension(-.5,80),0)
-        self.assertAlmostEqual(self.f.safety_extension(.6,25),.3)
-        self.assertLess(self.f.safety_extension(-.5,10),0)
-    def test_finite(self):
-        for b in np.linspace(-1,1,11):
-            for s in np.linspace(0,100,11):
-                self.assertTrue(np.isfinite(self.f.infer(float(b),float(s))))
+
+class ControllerTests(unittest.TestCase):
+    def setUp(self):
+        self.ems = MamdaniEMS()
+
+    def test_all_9_rules_transcribed(self):
+        self.assertEqual(len(RULES), 9)
+        self.assertEqual(RULES['surplus', 'low'], 'charge')
+        self.assertEqual(RULES['deficit', 'low'], 'hold')
+        self.assertEqual(RULES['surplus', 'high'], 'hold')
+        self.assertEqual(RULES['deficit', 'high'], 'discharge')
+
+    def test_triangular_peak(self):
+        self.assertAlmostEqual(float(triangle(0, -1, 0, 1)), 1)
+        self.assertAlmostEqual(float(triangle(.5, -1, 0, 1)), .5)
+
+    def test_fig3_anchors(self):
+        for label, bal in [('surplus', -1), ('balanced', 0), ('deficit', 1)]:
+            p, _ = self.ems.memberships(bal, 50)
+            self.assertAlmostEqual(p[label], 1)
+        for label, soc in [('low', 0), ('medium', 50), ('high', 100)]:
+            _, s = self.ems.memberships(0, soc)
+            self.assertAlmostEqual(s[label], 1)
+
+    def test_fig3_directions(self):
+        self.assertLess(self.ems.infer(-1, 0), -.4)
+        self.assertGreater(self.ems.infer(1, 100), .4)
+        self.assertAlmostEqual(self.ems.infer(0, 50), 0., places=9)
+
+    def test_text_cutoff_vs_fig3_discrepancy_is_visible(self):
+        self.assertNotEqual(self.ems.control(-1, 0, 'fig3_fis'),
+                            self.ems.control(-1, 0, 'text_cutoff'))
+        self.assertEqual(self.ems.control(-1, 0, 'text_cutoff'), 0)
+        self.assertEqual(self.ems.control(1, 100, 'text_cutoff'), 0)
+
+    def test_proposed_forbids_dangerous_direction(self):
+        for s in (0, 10, 20):
+            self.assertEqual(self.ems.safety_extension(.4, s), 0)
+        for s in (80, 90, 100):
+            self.assertEqual(self.ems.safety_extension(-.4, s), 0)
+        self.assertEqual(self.ems.safety_extension(.6, 25), .3)
+        self.assertEqual(self.ems.safety_extension(-.6, 75), -.3)
+
+    def test_proposed_allows_recovery(self):
+        self.assertLess(self.ems.control(-1, 10, 'proposed'), 0)
+        self.assertGreater(self.ems.control(1, 90, 'proposed'), 0)
+        self.assertEqual(self.ems.control(-1, 10, 'text_cutoff'), 0)
+
+    def test_no_nan_or_overflows(self):
+        for bal in np.linspace(-1, 1, 13):
+            for soc in np.linspace(0, 100, 13):
+                for mode in ('fig3_fis', 'text_cutoff', 'proposed'):
+                    value = self.ems.control(float(bal), float(soc), mode)
+                    self.assertTrue(np.isfinite(value))
+                    self.assertLessEqual(abs(value), 1)
+
     def test_energy_conservation(self):
-        _,p,l=generate_day(seed=3)
-        for proposed in [False,True]:
-            for r in simulate(p,l,25,proposed):
-                self.assertAlmostEqual(r['pv_kw']+r['battery_kw']+r['grid_kw'],r['load_kw'])
-                self.assertGreaterEqual(r['soc_after'],0)
-                self.assertLessEqual(r['soc_after'],100)
-    def test_membership_overlap_sum_not_required_one(self):
-        _,s=self.f.memberships(-.5,25)
-        self.assertGreater(s['low'],0)
-        self.assertGreater(s['medium'],0)
-if __name__=='__main__':unittest.main()
+        _, pv, load = generate_day(seed=42)
+        rows = simulate(pv, load, 30, mode='proposed')
+        self.assertEqual(len(rows), 96)
+        self.assertLess(max(abs(x['energy_residual_kw']) for x in rows), 1.e-8)
+        self.assertTrue(all(0 <= x['soc_after'] <= 100 for x in rows))
+
+    def test_validation(self):
+        with self.assertRaises(ValueError):
+            self.ems.infer(2, 50)
+        with self.assertRaises(ValueError):
+            self.ems.infer(0, float('nan'))
+        with self.assertRaises(ValueError):
+            self.ems.control(0, 20, 'unknown')
+        with self.assertRaises(ValueError):
+            MamdaniEMS(Config(guard_width=0))
+        with self.assertRaises(ValueError):
+            self.ems.from_power(-1, 2, 50)
+
+
+if __name__ == '__main__':
+    unittest.main()

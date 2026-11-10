@@ -1,8 +1,12 @@
-"""Reconstructed Mamdani EMS subsystem based on Nur-E-Alam et al. (2025), Fig. 3.
+"""Transparent Python reproduction of the Figure 3 Mamdani FIS in Nur-E-Alam et al. (2025).
 
-This is NOT the original full Simulink microgrid implementation. Our kW input
-normalization is an explicit assumption. Output: negative charge, positive
-discharge, zero hold. 9 rules transcribed from the figure image.
+Reference: https://doi.org/10.1038/s41598-024-82360-4, Figure 3.
+Three independently identified control modes are deliberately NOT conflated:
+* fig3_fis: 9 IF-THEN rules from the published Figure 3(d), no postfilter;
+* text_cutoff: literal interpretation of the paper's written no-current policy
+               outside the 20-80% SOC band (ambiguous vs Figure 3 rules);
+* proposed: original direction-aware 10%-wide soft boundary envelope.
+This is a controller-subsystem approximation, not the original Simulink plant.
 """
 from dataclasses import dataclass
 import numpy as np
@@ -18,69 +22,113 @@ RULES = {
     ('balanced', 'medium'): 'hold',
     ('balanced', 'high'): 'hold',
 }
+MODES = ('fig3_fis', 'text_cutoff', 'proposed')
 
-def triangle(x,a,b,c):
-    """Triangle membership including clipped-shoulders outside plotted universe."""
-    x=np.asarray(x,dtype=float)
-    if not a<b<c: raise ValueError('Must satisfy a<b<c')
-    return np.maximum(0,np.minimum((x-a)/(b-a),(c-x)/(c-b)))
+
+def triangle(x, a, b, c):
+    """Conventional triangular membership, including 'shoulder' at universe edge."""
+    x = np.asarray(x, dtype=float)
+    if not a < b < c:
+        raise ValueError('Expected a < b < c')
+    return np.maximum(0., np.minimum((x-a)/(b-a), (c-x)/(c-b)))
+
 
 @dataclass(frozen=True)
 class Config:
-    normalization_kw: float=20.0  # assumption, not given by original article
-    points: int=1001
-    soc_min: float=20.0
-    soc_max: float=80.0
-    guard_width: float=10.0
+    normalization_kw: float = 20.0  # explicit project assumption
+    points: int = 1001
+    soc_min: float = 20.0
+    soc_max: float = 80.0
+    guard_width: float = 10.0  # new parameter; not from the original article
+
 
 class MamdaniEMS:
-    def __init__(self,cfg=Config()):
-        self.cfg=cfg
-        self.output_x=np.linspace(-1,1,cfg.points)
-        self.output_mfs={
-            'charge':triangle(self.output_x,-2,-1,0),
-            'hold':triangle(self.output_x,-1,0,1),
-            'discharge':triangle(self.output_x,0,1,2)}
+    def __init__(self, cfg=Config()):
+        if cfg.normalization_kw <= 0 or cfg.points < 101 or cfg.guard_width <= 0:
+            raise ValueError('Bad model configuration')
+        self.cfg = cfg
+        self.output_x = np.linspace(-1, 1, cfg.points)
+        self.output_mfs = {
+            'charge': triangle(self.output_x, -2, -1, 0),
+            'hold': triangle(self.output_x, -1, 0, 1),
+            'discharge': triangle(self.output_x, 0, 1, 2),
+        }
 
     @staticmethod
-    def memberships(balance,soc):
-        if not -1<=balance<=1 or not 0<=soc<=100:raise ValueError('outside universe')
-        return ({'surplus':float(triangle(balance,-2,-1,0)),
-                 'balanced':float(triangle(balance,-1,0,1)),
-                 'deficit':float(triangle(balance,0,1,2))},
-                {'low':float(triangle(soc,-50,0,50)),
-                 'medium':float(triangle(soc,0,50,100)),
-                 'high':float(triangle(soc,50,100,150))})
+    def memberships(balance, soc):
+        if not np.isfinite(balance) or not np.isfinite(soc):
+            raise ValueError('Non-finite input')
+        if not -1 <= balance <= 1 or not 0 <= soc <= 100:
+            raise ValueError('Input outside universe')
+        return ({
+            'surplus': float(triangle(balance, -2, -1, 0)),
+            'balanced': float(triangle(balance, -1, 0, 1)),
+            'deficit': float(triangle(balance, 0, 1, 2)),
+        }, {
+            'low': float(triangle(soc, -50, 0, 50)),
+            'medium': float(triangle(soc, 0, 50, 100)),
+            'high': float(triangle(soc, 50, 100, 150)),
+        })
 
-    def infer(self,balance,soc,details=False):
-        """Mamdani: min AND; min implication; max aggregation; centroid."""
-        p,s=self.memberships(balance,soc)
-        agg=np.zeros_like(self.output_x)
-        rules=[]
-        for (pname,sname),action in RULES.items():
-            strength=min(p[pname],s[sname])
-            rules.append({'condition':f'{pname} & {sname}','output':action,'strength':strength})
-            agg=np.maximum(agg,np.minimum(strength,self.output_mfs[action]))
-        area=float(np.trapezoid(agg,self.output_x))
-        value=float(np.trapezoid(agg*self.output_x,self.output_x)/area) if area>1e-12 else 0.0
-        if details: return {'action':value,'power_memberships':p,'soc_memberships':s,'rules':rules}
-        return value
+    def infer(self, balance, soc, details=False):
+        """Figure-3 FIS: min-AND, min-implication, max-aggregation, centroid."""
+        power, soc_deg = self.memberships(balance, soc)
+        aggregate = np.zeros_like(self.output_x)
+        rules = []
+        for (p, s), label in RULES.items():
+            firing = min(power[p], soc_deg[s])
+            rules.append({'condition': f'{p} & {s}', 'output': label,
+                          'strength': float(firing)})
+            aggregate = np.maximum(aggregate,
+                                   np.minimum(firing, self.output_mfs[label]))
+        area = float(np.trapezoid(aggregate, self.output_x))
+        result = (float(np.trapezoid(aggregate*self.output_x, self.output_x)/area)
+                  if area > 1.e-12 else 0.)
+        if details:
+            return {'action': result, 'power_memberships': power,
+                    'soc_memberships': soc_deg, 'rules': rules}
+        return result
 
-    def from_power(self,pv_kw,load_kw,soc,proposed=False):
-        balance=float(np.clip((load_kw-pv_kw)/self.cfg.normalization_kw,-1,1))
-        raw=self.infer(balance,soc)
-        return self.safety_extension(raw,soc) if proposed else raw
+    def text_cutoff(self, action, soc):
+        """Simplified article-text interpretation, distinct from Figure 3 rule map.
 
-    def safety_extension(self,action,soc):
-        """Our original extension: direction-sensitive smooth SOC safety filter.
-        At SOC <=20, prohibit discharging; at SOC >=80, prohibit charging.
-        Allow charging at low SOC and discharging at high SOC (safe recovery).
+        The prose reports no charge or discharge when SOC is below 20% or
+        above 80%, although Figure 3(d) permits safe-direction recovery.
+        We make this ambiguity visible rather than silently assert equivalence.
         """
-        width=self.cfg.guard_width
-        if width<=0:raise ValueError('guard_width must be > 0')
-        if action>0:
-            strength=np.clip((soc-self.cfg.soc_min)/width,0,1)
-        elif action<0:
-            strength=np.clip((self.cfg.soc_max-soc)/width,0,1)
-        else: strength=1
-        return float(action*strength)
+        return 0.0 if soc <= self.cfg.soc_min or soc >= self.cfg.soc_max else float(action)
+
+    def safety_extension(self, action, soc, width=None):
+        """Our contribution: direction-specific gradual protection near SOC edges.
+
+        It forbids discharge below 20 and charge above 80, but allows recovery
+        charging at low SOC and recovery discharging at high SOC.
+        """
+        width = self.cfg.guard_width if width is None else width
+        if width <= 0:
+            raise ValueError('width must be positive')
+        if action > 0:  # discharging
+            factor = np.clip((soc-self.cfg.soc_min)/width, 0, 1)
+        elif action < 0:  # charging
+            factor = np.clip((self.cfg.soc_max-soc)/width, 0, 1)
+        else:
+            factor = 1.
+        return float(action*factor)
+
+    def control(self, balance, soc, mode='fig3_fis', width=None):
+        if mode not in MODES:
+            raise ValueError('Unknown mode')
+        raw = self.infer(balance, soc)
+        if mode == 'text_cutoff':
+            return self.text_cutoff(raw, soc)
+        if mode == 'proposed':
+            return self.safety_extension(raw, soc, width)
+        return raw
+
+    def from_power(self, pv_kw, load_kw, soc, mode='fig3_fis', width=None):
+        if not np.isfinite(pv_kw) or not np.isfinite(load_kw):
+            raise ValueError('Non-finite power')
+        if pv_kw < 0 or load_kw < 0:
+            raise ValueError('Power must be nonnegative')
+        balance = float(np.clip((load_kw-pv_kw)/self.cfg.normalization_kw, -1, 1))
+        return self.control(balance, soc, mode, width)

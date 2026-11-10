@@ -1,0 +1,5 @@
+guard_width_soc_points,unsafe_direction_steps_total,outside_band_steps_total,mean_grid_import_kwh,mean_battery_throughput_kwh
+5,0,856,160.837,17.2739
+10,0,856,161.114,16.8473
+15,0,856,161.3482,16.4175
+20,0,856,161.5491,16.0106
