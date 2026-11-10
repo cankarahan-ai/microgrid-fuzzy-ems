@@ -1,7 +1,7 @@
 # Microgrid Fuzzy EMS — Mamdani FIS Reproduction & SOC-Aware Extension
 
 **Bulanık Mantık Dönem Projesi** · İstanbul Üniversitesi-Cerrahpaşa · Bilgisayar Mühendisliği  
-**Öğrenci:** Can Karahan · **Öğrenci numarası:** [TESLİM ÖNCESİ EKLENECEK]  
+**Öğrenci:** Can Karahan · **Öğrenci numarası:** 1306210004  
 **Güncel sürüm:** 10 Kasım 2026 (nihai teslim öncesi kontrol sürümü)
 
 ## Original Paper
